@@ -85,13 +85,13 @@ type Response struct {
 
 // Error codes surfaced to clients.
 const (
-	ErrCodeProtocol   = "PROTOCOL_ERROR"
-	ErrCodeAuth       = "AUTH_REQUIRED"
-	ErrCodeState      = "INVALID_STATE"
-	ErrCodeInternal   = "INTERNAL_ERROR"
-	ErrCodeTimeout    = "TIMEOUT"
-	ErrCodeNotFound   = "NOT_FOUND"
-	ErrCodeQuota      = "QUOTA_EXCEEDED"
+	ErrCodeProtocol    = "PROTOCOL_ERROR"
+	ErrCodeAuth        = "AUTH_REQUIRED"
+	ErrCodeState       = "INVALID_STATE"
+	ErrCodeInternal    = "INTERNAL_ERROR"
+	ErrCodeTimeout     = "TIMEOUT"
+	ErrCodeNotFound    = "NOT_FOUND"
+	ErrCodeQuota       = "QUOTA_EXCEEDED"
 	ErrCodeUnsupported = "UNSUPPORTED"
 )
 

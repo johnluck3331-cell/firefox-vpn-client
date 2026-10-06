@@ -22,10 +22,10 @@ type Handler func(ctx context.Context, req *Request) *Response
 type Server struct {
 	handlers map[string]Handler
 
-	mu         sync.Mutex
-	inFlight   int32
-	MaxInFlt   int32 // advisory cap per connection (0 = unlimited)
-	ReadLimit  int   // bufio reader size; defaults to MaxMessageBytes
+	mu        sync.Mutex
+	inFlight  int32
+	MaxInFlt  int32 // advisory cap per connection (0 = unlimited)
+	ReadLimit int   // bufio reader size; defaults to MaxMessageBytes
 }
 
 // NewServer creates a server with the given command→handler table. Unknown

@@ -28,20 +28,20 @@ import (
 )
 
 var (
-	kernel32               = syscall.NewLazyDLL("kernel32.dll")
-	advapi32               = syscall.NewLazyDLL("advapi32.dll")
-	secur32                = syscall.NewLazyDLL("secreur32.dll") // placeholder replaced below
-	wtslib32               = syscall.NewLazyDLL("wtsapi32.dll")
-	procCreateNamedPipeW   = kernel32.NewProc("CreateNamedPipeW")
-	procConnectNamedPipe   = kernel32.NewProc("ConnectNamedPipe")
-	procDisconnectNamedPipe = kernel32.NewProc("DisconnectNamedPipe")
-	procCloseHandle        = kernel32.NewProc("CloseHandle")
-	procImpersonateNamedPipeClient = advapi32.NewProc("ImpersonateNamedPipeClient")
-	procRevertToSelf       = advapi32.NewProc("RevertToSelf")
-	procGetTokenInformation = advapi32.NewProc("GetTokenInformation")
-	procOpenProcessToken   = advapi32.NewProc("OpenProcessToken")
+	kernel32                                                 = syscall.NewLazyDLL("kernel32.dll")
+	advapi32                                                 = syscall.NewLazyDLL("advapi32.dll")
+	secur32                                                  = syscall.NewLazyDLL("secreur32.dll") // placeholder replaced below
+	wtslib32                                                 = syscall.NewLazyDLL("wtsapi32.dll")
+	procCreateNamedPipeW                                     = kernel32.NewProc("CreateNamedPipeW")
+	procConnectNamedPipe                                     = kernel32.NewProc("ConnectNamedPipe")
+	procDisconnectNamedPipe                                  = kernel32.NewProc("DisconnectNamedPipe")
+	procCloseHandle                                          = kernel32.NewProc("CloseHandle")
+	procImpersonateNamedPipeClient                           = advapi32.NewProc("ImpersonateNamedPipeClient")
+	procRevertToSelf                                         = advapi32.NewProc("RevertToSelf")
+	procGetTokenInformation                                  = advapi32.NewProc("GetTokenInformation")
+	procOpenProcessToken                                     = advapi32.NewProc("OpenProcessToken")
 	procConvertStringSecurityDescriptorToSecurityDescriptorW = advapi32.NewProc("ConvertStringStringSecurityDescriptorToSecurityDescriptorW")
-	procWTSGetActiveConsoleSessionId = kernel32.NewProc("WTSGetActiveConsoleSessionId")
+	procWTSGetActiveConsoleSessionId                         = kernel32.NewProc("WTSGetActiveConsoleSessionId")
 )
 
 // Correctly-resolved procs (init avoids const-name typos at compile time).
@@ -241,11 +241,11 @@ func (ps *PipeServer) validateClient(h syscall.Handle) bool {
 
 // --- Win32 constants -------------------------------------------------------
 const (
-	PIPE_ACCESS_DUPLEX          = 0x00000003
+	PIPE_ACCESS_DUPLEX            = 0x00000003
 	FILE_FLAG_FIRST_PIPE_INSTANCE = 0x00080000
-	SECURITY_SQOS_PRESENT       = 0x00100000
-	SECURITY_VALID_SDESC        = 0x00000008
-	TOKEN_QUERY                 = 0x0008
+	SECURITY_SQOS_PRESENT         = 0x00100000
+	SECURITY_VALID_SDESC          = 0x00000008
+	TOKEN_QUERY                   = 0x0008
 )
 
 func securityDescriptorFromSDDL(sddl string) (syscall.Handle, error) {

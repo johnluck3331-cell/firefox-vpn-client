@@ -45,36 +45,36 @@ import (
 var (
 	wintunDLL = syscall.NewLazyDLL("wintun.dll")
 
-	procWintunCreateAdapter        = wintunDLL.NewProc("WintunCreateAdapter")
-	procWintunOpenAdapter          = wintunDLL.NewProc("WintunOpenAdapter")
-	procWintunDeleteAdapter        = wintunDLL.NewProc("WintunDeleteAdapter")
-	procWintunGetAdapterLUID       = wintunDLL.NewProc("WintunGetAdapterLUID")
-	procWintunStartSession         = wintunDLL.NewProc("WintunStartSession")
-	procWintunEndSession           = wintunDLL.NewProc("WintunEndSession")
-	procWintunGetRingCapacity      = wintunDLL.NewProc("WintunGetRingCapacity")
-	procWintunGetReadPacketLink    = wintunDLL.NewProc("WintunGetReadPacketLink")
+	procWintunCreateAdapter         = wintunDLL.NewProc("WintunCreateAdapter")
+	procWintunOpenAdapter           = wintunDLL.NewProc("WintunOpenAdapter")
+	procWintunDeleteAdapter         = wintunDLL.NewProc("WintunDeleteAdapter")
+	procWintunGetAdapterLUID        = wintunDLL.NewProc("WintunGetAdapterLUID")
+	procWintunStartSession          = wintunDLL.NewProc("WintunStartSession")
+	procWintunEndSession            = wintunDLL.NewProc("WintunEndSession")
+	procWintunGetRingCapacity       = wintunDLL.NewProc("WintunGetRingCapacity")
+	procWintunGetReadPacketLink     = wintunDLL.NewProc("WintunGetReadPacketLink")
 	procWintunReleaseReadPacketLink = wintunDLL.NewProc("WintunReleaseReadPacketLink")
-	procWintunAllocateSendPacket   = wintunDLL.NewProc("WintunAllocateSendPacket")
-	procWintunSendPacket           = wintunDLL.NewProc("WintunSendPacket")
-	procWintunReceivePacket        = wintunDLL.NewProc("WintunReceivePacket")
-	procWintunReleaseReceivePacket = wintunDLL.NewProc("WintunReleaseReceivePacket")
-	procWintunRunningDriverVersion = wintunDLL.NewProc("WintunGetRunningDriverVersion")
+	procWintunAllocateSendPacket    = wintunDLL.NewProc("WintunAllocateSendPacket")
+	procWintunSendPacket            = wintunDLL.NewProc("WintunSendPacket")
+	procWintunReceivePacket         = wintunDLL.NewProc("WintunReceivePacket")
+	procWintunReleaseReceivePacket  = wintunDLL.NewProc("WintunReleaseReceivePacket")
+	procWintunRunningDriverVersion  = wintunDLL.NewProc("WintunGetRunningDriverVersion")
 
-	kernel32W             = syscall.NewLazyDLL("kernel32.dll")
-	procCreateEventW      = kernel32W.NewProc("CreateEventW")
-	procWaitForSingleObj  = kernel32W.NewProc("WaitForSingleObject")
-	procCloseHandleWin    = kernel32W.NewProc("CloseHandle")
-	procRtlGetVersion     = syscall.NewLazyDLL("ntdll.dll").NewProc("RtlGetVersion")
+	kernel32W            = syscall.NewLazyDLL("kernel32.dll")
+	procCreateEventW     = kernel32W.NewProc("CreateEventW")
+	procWaitForSingleObj = kernel32W.NewProc("WaitForSingleObject")
+	procCloseHandleWin   = kernel32W.NewProc("CloseHandle")
+	procRtlGetVersion    = syscall.NewLazyDLL("ntdll.dll").NewProc("RtlGetVersion")
 )
 
 const (
 	// WINTUN_MAX_PACKET_SIZE = 0xffff, WINTUN_RING_CAPACITY = 2 MiB max
-	wintunMaxPacketSize  = 0xFFFF
+	wintunMaxPacketSize   = 0xFFFF
 	wintunDefaultCapacity = 1 << 20 // session ring capacity bytes
-	waitTimeoutInfinite  = 0xFFFFFFFF
-	waitObjectSignaled   = 0
-	waitTimeout          = 258
-	errorFileNotFound    = syscall.Errno(2)
+	waitTimeoutInfinite   = 0xFFFFFFFF
+	waitObjectSignaled    = 0
+	waitTimeout           = 258
+	errorFileNotFound     = syscall.Errno(2)
 )
 
 // ErrWintunNotInstalled means wintun.dll could not be loaded/resolved.
@@ -85,13 +85,13 @@ type netLUID struct{ Value uint64 }
 
 // WintunAdapter implements Adapter against the real Wintun user-mode API.
 type WintunAdapter struct {
-	mu        sync.Mutex
-	adapter   uintptr // WINTUN_ADAPTER_HANDLE
-	luid      netLUID
-	name      string
-	closed    bool
-	session   *WintunSession
-	dllOK     bool
+	mu      sync.Mutex
+	adapter uintptr // WINTUN_ADAPTER_HANDLE
+	luid    netLUID
+	name    string
+	closed  bool
+	session *WintunSession
+	dllOK   bool
 }
 
 // checkWintunAvailable probes that the DLL loads and core exports resolve.

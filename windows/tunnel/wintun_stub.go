@@ -10,12 +10,12 @@ type WintunAdapter struct{}
 
 var errWindowsOnly = errors.New("tunnel: Wintun requires Windows")
 
-func (*WintunAdapter) Create(AdapterConfig) error          { return errWindowsOnly }
-func (*WintunAdapter) Open(string) error                   { return errWindowsOnly }
-func (*WintunAdapter) LUID() string                        { return "" }
+func (*WintunAdapter) Create(AdapterConfig) error                { return errWindowsOnly }
+func (*WintunAdapter) Open(string) error                         { return errWindowsOnly }
+func (*WintunAdapter) LUID() string                              { return "" }
 func (*WintunAdapter) StartSession(LayerConfig) (Session, error) { return nil, errWindowsOnly }
-func (*WintunAdapter) Delete() error                       { return errWindowsOnly }
-func (*WintunAdapter) Close() error                        { return nil }
+func (*WintunAdapter) Delete() error                             { return errWindowsOnly }
+func (*WintunAdapter) Close() error                              { return nil }
 
 // WintunAvailable reports the platform limitation on non-Windows hosts.
 func WintunAvailable() error { return errWindowsOnly }

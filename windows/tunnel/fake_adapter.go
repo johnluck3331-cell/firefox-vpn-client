@@ -31,11 +31,11 @@ const (
 // dataplane self-test harness.
 type FakeAdapterConfig struct {
 	AdapterConfig
-	QueueSize   int        // bounded inbound/outbound queues (default 256)
-	MTU         uint16     // default 1500
-	DropPolicy  DropPolicy // default Block
-	ReadError   error      // if set, ReadPacket fails with it after injection
-	WriteError  error      // if set, WritePacket fails with it
+	QueueSize  int        // bounded inbound/outbound queues (default 256)
+	MTU        uint16     // default 1500
+	DropPolicy DropPolicy // default Block
+	ReadError  error      // if set, ReadPacket fails with it after injection
+	WriteError error      // if set, WritePacket fails with it
 }
 
 // FakeAdapter is an in-memory Adapter satisfying the same lifecycle as real
@@ -178,10 +178,10 @@ func (f *FakeAdapter) StatsSnapshot() SessionStatistics {
 
 // FakeSession implements Session over the FakeAdapter channels.
 type FakeSession struct {
-	f     *FakeAdapter
-	layer LayerConfig
-	ended chan struct{}
-	mu    sync.Mutex
+	f         *FakeAdapter
+	layer     LayerConfig
+	ended     chan struct{}
+	mu        sync.Mutex
 	endedOnce bool
 }
 

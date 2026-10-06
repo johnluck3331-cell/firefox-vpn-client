@@ -83,14 +83,14 @@ func FetchPass(ctx context.Context, accessToken string) (*core.ProxyPassInfo, er
 
 // UpstreamConfig describes a fully-resolved upstream connection attempt.
 type UpstreamConfig struct {
-	AccessToken string           // FxA OAuth access token (kept for renewals)
-	ObtainedAt  time.Time        // when the access token was obtained
+	AccessToken string    // FxA OAuth access token (kept for renewals)
+	ObtainedAt  time.Time // when the access token was obtained
 	Pass        *core.ProxyPassInfo
-	ProxyURL    *url.URL         // https://<proxy host>
-	UseH3       bool             // prefer HTTP/3; false uses HTTP/2
-	Sessions    int              // upstream session pool size (>=1)
-	StatusFile  string           // optional runtime status file path
-	Timeout     time.Duration    // per-session handshake timeout
+	ProxyURL    *url.URL      // https://<proxy host>
+	UseH3       bool          // prefer HTTP/3; false uses HTTP/2
+	Sessions    int           // upstream session pool size (>=1)
+	StatusFile  string        // optional runtime status file path
+	Timeout     time.Duration // per-session handshake timeout
 }
 
 // TunnelOpener opens byte-stream tunnels to arbitrary destination
