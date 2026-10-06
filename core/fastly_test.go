@@ -1,4 +1,4 @@
-package vpnclient
+package core
 
 import (
 	"crypto/sha256"

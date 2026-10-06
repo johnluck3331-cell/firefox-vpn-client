@@ -24,7 +24,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	vpnclient "firefox-vpn-client"
+	core "firefox-vpn-client/core"
 
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
@@ -173,7 +173,7 @@ func main() {
 	}
 
 	apiProxyFlag := flag.String("api-proxy", "", "Optional HTTP/HTTPS/SOCKS5 proxy for Firefox Accounts, Guardian, and Remote Settings API requests")
-	guardianFlag := flag.String("guardian", vpnclient.GuardianEndpointDefault, "Guardian API endpoint")
+	guardianFlag := flag.String("guardian", core.GuardianEndpointDefault, "Guardian API endpoint")
 	listenFlag := flag.String("listen", "127.0.0.1:1080", "Local SOCKS5 listen address")
 	loginFlag := flag.Bool("login", false, "Force fresh login (ignore saved refresh token)")
 	sessionTokenFlag := flag.String("session-token", "", "Session token, or path to a .txt file with one token per line; tokens rotate automatically when their monthly quota runs out")
@@ -548,9 +548,9 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
-func fetchProxyPassCtx(guardian, accessToken string) (*vpnclient.ProxyPassInfo, error) {
+func fetchProxyPassCtx(guardian, accessToken string) (*core.ProxyPassInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), apiRequestTimeout)
-	pass, err := vpnclient.FetchProxyPass(ctx, guardian, accessToken)
+	pass, err := core.FetchProxyPass(ctx, guardian, accessToken)
 	cancel()
 	return pass, err
 }
@@ -560,19 +560,19 @@ func refreshRuntimeAuth(auth *runtimeAuth) (*runtimeAuth, error) {
 		return nil, fmt.Errorf("no refresh token available")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), apiRequestTimeout)
-	token, err := vpnclient.FxaRefreshToken(ctx, auth.Token.RefreshToken)
+	token, err := core.FxaRefreshToken(ctx, auth.Token.RefreshToken)
 	cancel()
 	if err != nil {
 		return nil, err
 	}
-	if err := vpnclient.SaveTokens(token); err != nil {
+	if err := core.SaveTokens(token); err != nil {
 		logWarn("saving refreshed tokens failed: %v", err)
 	}
 	return &runtimeAuth{Token: token, ObtainedAt: time.Now()}, nil
 }
 
-func prepareDemoInputs(forceLogin bool, sessionToken string, needServerList bool) (*runtimeAuth, string, []vpnclient.Country, *sessionTokenPool) {
-	var token *vpnclient.TokenResponse
+func prepareDemoInputs(forceLogin bool, sessionToken string, needServerList bool) (*runtimeAuth, string, []core.Country, *sessionTokenPool) {
+	var token *core.TokenResponse
 	var tokenSource string
 	var tokenObtainedAt time.Time
 	var tokenPool *sessionTokenPool
@@ -600,7 +600,7 @@ func prepareDemoInputs(forceLogin bool, sessionToken string, needServerList bool
 	case sessionToken != "":
 		fmt.Print("Using provided session token... ")
 		ctx, cancel := context.WithTimeout(context.Background(), apiRequestTimeout)
-		newToken, err := vpnclient.FxaOAuthToken(ctx, sessionToken)
+		newToken, err := core.FxaOAuthToken(ctx, sessionToken)
 		cancel()
 		if err != nil {
 			fmt.Printf("failed: %v\n", err)
@@ -615,16 +615,16 @@ func prepareDemoInputs(forceLogin bool, sessionToken string, needServerList bool
 	}
 
 	if tokenSource != "cached access token" {
-		if err := vpnclient.SaveTokens(token); err != nil {
+		if err := core.SaveTokens(token); err != nil {
 			logWarn("saving tokens failed: %v", err)
 		}
 	}
 
-	var countries []vpnclient.Country
+	var countries []core.Country
 	var err error
 	if needServerList {
 		ctx, cancel := context.WithTimeout(context.Background(), apiRequestTimeout)
-		countries, err = vpnclient.FetchServerList(ctx)
+		countries, err = core.FetchServerList(ctx)
 		cancel()
 		if err != nil {
 			logWarn("fetching server list failed: %v", err)
@@ -772,7 +772,7 @@ func activateNextPoolToken(pool *sessionTokenPool) (*runtimeAuth, error) {
 		}
 		fmt.Printf("Activating session token %d/%d... ", index, total)
 		ctx, cancel := context.WithTimeout(context.Background(), apiRequestTimeout)
-		token, err := vpnclient.FxaOAuthToken(ctx, sessionToken)
+		token, err := core.FxaOAuthToken(ctx, sessionToken)
 		cancel()
 		if err != nil {
 			fmt.Printf("failed: %v\n", err)
@@ -786,7 +786,7 @@ func activateNextPoolToken(pool *sessionTokenPool) (*runtimeAuth, error) {
 
 // isQuotaExhausted reports whether the proxy pass quota headers indicate
 // that no monthly traffic is left.
-func isQuotaExhausted(pass *vpnclient.ProxyPassInfo) bool {
+func isQuotaExhausted(pass *core.ProxyPassInfo) bool {
 	if pass == nil || pass.QuotaLeft == "" {
 		return false
 	}
@@ -807,14 +807,14 @@ func isExistingFile(path string) bool {
 // and activating the account; when the token's monthly quota is exhausted
 // (HTTP 429 or zero remaining) and a session token pool is configured, it
 // rotates to the next token.
-func acquireInitialPass(guardian string, auth *runtimeAuth, pool *sessionTokenPool) (*vpnclient.ProxyPassInfo, *runtimeAuth, error) {
+func acquireInitialPass(guardian string, auth *runtimeAuth, pool *sessionTokenPool) (*core.ProxyPassInfo, *runtimeAuth, error) {
 	for {
 		pass, err := fetchProxyPassCtx(guardian, auth.Token.AccessToken)
 		if err == nil && !isQuotaExhausted(pass) {
 			return pass, auth, nil
 		}
 
-		if errors.Is(err, vpnclient.ErrTokenInvalid) {
+		if errors.Is(err, core.ErrTokenInvalid) {
 			logInfo("cached OAuth access was rejected by Guardian; refreshing token")
 			if refreshed, refreshErr := refreshRuntimeAuth(auth); refreshErr == nil {
 				auth = refreshed
@@ -822,10 +822,10 @@ func acquireInitialPass(guardian string, auth *runtimeAuth, pool *sessionTokenPo
 			} else {
 				logWarn("refreshing OAuth token after Guardian rejection failed: %v", refreshErr)
 			}
-			if errors.Is(err, vpnclient.ErrTokenInvalid) {
+			if errors.Is(err, core.ErrTokenInvalid) {
 				logInfo("Guardian account is not activated for Firefox VPN proxy access; activating")
 				ctx, cancel := context.WithTimeout(context.Background(), apiRequestTimeout)
-				_, activateErr := vpnclient.ActivateGuardian(ctx, guardian, auth.Token.AccessToken)
+				_, activateErr := core.ActivateGuardian(ctx, guardian, auth.Token.AccessToken)
 				cancel()
 				if activateErr != nil {
 					logWarn("activating Guardian account failed: %v", activateErr)
@@ -839,7 +839,7 @@ func acquireInitialPass(guardian string, auth *runtimeAuth, pool *sessionTokenPo
 			}
 		}
 
-		if err != nil && !errors.Is(err, vpnclient.ErrQuotaExceeded) && !errors.Is(err, vpnclient.ErrTokenInvalid) {
+		if err != nil && !errors.Is(err, core.ErrQuotaExceeded) && !errors.Is(err, core.ErrTokenInvalid) {
 			// Transient failure (network, server error): no point burning
 			// through the pool.
 			return nil, nil, err
@@ -850,7 +850,7 @@ func acquireInitialPass(guardian string, auth *runtimeAuth, pool *sessionTokenPo
 			}
 			return pass, auth, nil
 		}
-		if errors.Is(err, vpnclient.ErrTokenInvalid) {
+		if errors.Is(err, core.ErrTokenInvalid) {
 			logWarn("session token rejected by Guardian; switching to the next token")
 		} else {
 			logWarn("session token quota exhausted; switching to the next token")
@@ -862,17 +862,17 @@ func acquireInitialPass(guardian string, auth *runtimeAuth, pool *sessionTokenPo
 			}
 			return nil, nil, nextErr
 		}
-		if saveErr := vpnclient.SaveTokens(nextAuth.Token); saveErr != nil {
+		if saveErr := core.SaveTokens(nextAuth.Token); saveErr != nil {
 			logWarn("saving tokens failed: %v", saveErr)
 		}
 		auth = nextAuth
 	}
 }
 
-func printRuntimeInfo(guardian, accessToken string, pass *vpnclient.ProxyPassInfo, countries []vpnclient.Country) {
+func printRuntimeInfo(guardian, accessToken string, pass *core.ProxyPassInfo, countries []core.Country) {
 	fmt.Println("=== User Info ===")
 	ctx, cancel := context.WithTimeout(context.Background(), apiRequestTimeout)
-	ent, err := vpnclient.FetchUserInfo(ctx, guardian, accessToken)
+	ent, err := core.FetchUserInfo(ctx, guardian, accessToken)
 	cancel()
 	if err != nil {
 		fmt.Printf("Warning: could not fetch user info: %v\n", err)
@@ -905,10 +905,10 @@ func printRuntimeInfo(guardian, accessToken string, pass *vpnclient.ProxyPassInf
 		fmt.Println("No servers found in Remote Settings.")
 		return
 	}
-	vpnclient.PrintServerList(countries)
+	core.PrintServerList(countries)
 }
 
-func logProxyPassTimeCorrection(pass *vpnclient.ProxyPassInfo) {
+func logProxyPassTimeCorrection(pass *core.ProxyPassInfo) {
 	if pass == nil || pass.ClaimTimeCorrection() == 0 {
 		return
 	}
@@ -922,13 +922,13 @@ func upstreamMode(sessions int) string {
 	return fmt.Sprintf("upstream-session-pool size=%d affinity=client-ip failover", sessions)
 }
 
-func obtainOAuthToken(forceLogin bool) (*vpnclient.TokenResponse, string, time.Time) {
+func obtainOAuthToken(forceLogin bool) (*core.TokenResponse, string, time.Time) {
 	if !forceLogin {
-		saved, err := vpnclient.LoadTokens()
+		saved, err := core.LoadTokens()
 		if err == nil {
 			if saved.AccessTokenValid() {
 				fmt.Println("Using cached OAuth access token... OK")
-				return &vpnclient.TokenResponse{
+				return &core.TokenResponse{
 					AccessToken:  saved.AccessToken,
 					RefreshToken: saved.RefreshToken,
 					ExpiresIn:    saved.ExpiresIn,
@@ -939,7 +939,7 @@ func obtainOAuthToken(forceLogin bool) (*vpnclient.TokenResponse, string, time.T
 			if saved.RefreshToken != "" {
 				fmt.Print("Refreshing token... ")
 				ctx, cancel := context.WithTimeout(context.Background(), apiRequestTimeout)
-				token, err := vpnclient.FxaRefreshToken(ctx, saved.RefreshToken)
+				token, err := core.FxaRefreshToken(ctx, saved.RefreshToken)
 				cancel()
 				if err != nil {
 					fmt.Printf("failed: %v\n", err)
@@ -956,7 +956,7 @@ func obtainOAuthToken(forceLogin bool) (*vpnclient.TokenResponse, string, time.T
 
 	fmt.Print("Logging in... ")
 	loginCtx, loginCancel := context.WithTimeout(context.Background(), apiRequestTimeout)
-	loginResp, err := vpnclient.FxaLogin(loginCtx, email, password)
+	loginResp, err := core.FxaLogin(loginCtx, email, password)
 	loginCancel()
 	if err != nil {
 		fmt.Printf("failed: %v\n", err)
@@ -970,7 +970,7 @@ func obtainOAuthToken(forceLogin bool) (*vpnclient.TokenResponse, string, time.T
 
 	fmt.Print("Getting OAuth token... ")
 	tokenCtx, tokenCancel := context.WithTimeout(context.Background(), apiRequestTimeout)
-	token, err := vpnclient.FxaOAuthToken(tokenCtx, loginResp.SessionToken)
+	token, err := core.FxaOAuthToken(tokenCtx, loginResp.SessionToken)
 	tokenCancel()
 	if err != nil {
 		fmt.Printf("failed: %v\n", err)
@@ -1011,7 +1011,7 @@ func verifySessionInteractively(email, sessionToken, verificationMethod string) 
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), apiRequestTimeout)
-		err = vpnclient.FxaVerifySession(ctx, sessionToken, code)
+		err = core.FxaVerifySession(ctx, sessionToken, code)
 		cancel()
 		if err == nil {
 			fmt.Println("Session verified.")
@@ -1083,16 +1083,16 @@ func (p proxyCandidate) CityCodeOrUnknown() string {
 	return p.CityCode
 }
 
-func resolveProxy(proxyFlag string, countries []vpnclient.Country) (proxyCandidate, error) {
+func resolveProxy(proxyFlag string, countries []core.Country) (proxyCandidate, error) {
 	candidate, _, err := resolveProxyWithStateAndCountry(proxyFlag, "", countries, "")
 	return candidate, err
 }
 
-func resolveProxyWithState(proxyFlag string, countries []vpnclient.Country, stateFile string) (proxyCandidate, bool, error) {
+func resolveProxyWithState(proxyFlag string, countries []core.Country, stateFile string) (proxyCandidate, bool, error) {
 	return resolveProxyWithStateAndCountry(proxyFlag, "", countries, stateFile)
 }
 
-func resolveProxyWithStateAndCountry(proxyFlag, countryFilter string, countries []vpnclient.Country, stateFile string) (proxyCandidate, bool, error) {
+func resolveProxyWithStateAndCountry(proxyFlag, countryFilter string, countries []core.Country, stateFile string) (proxyCandidate, bool, error) {
 	if proxyFlag != "" {
 		if matched, ok := findProxyCandidate(proxyFlag, countries); ok {
 			matched.Addr = proxyFlag
@@ -1132,7 +1132,7 @@ func resolveProxyWithStateAndCountry(proxyFlag, countryFilter string, countries 
 	return candidate, false, nil
 }
 
-func selectProxyCandidate(countries []vpnclient.Country, countryFilter string) (proxyCandidate, error) {
+func selectProxyCandidate(countries []core.Country, countryFilter string) (proxyCandidate, error) {
 	proxies := connectProxyCandidates(countries)
 	if len(proxies) == 0 {
 		return proxyCandidate{}, fmt.Errorf("no CONNECT proxies available from server list or persisted state; pass -country CODE or -proxy HOST:PORT")
@@ -1297,7 +1297,7 @@ func writeProxySelectionState(path string, state proxySelectionState) error {
 	return os.Chmod(path, 0600)
 }
 
-func findProxyCandidate(proxyFlag string, countries []vpnclient.Country) (proxyCandidate, bool) {
+func findProxyCandidate(proxyFlag string, countries []core.Country) (proxyCandidate, bool) {
 	target, err := canonicalProxyAddr(proxyFlag)
 	if err != nil {
 		return proxyCandidate{}, false
@@ -1326,7 +1326,7 @@ func canonicalProxyAddr(raw string) (string, error) {
 	return strings.ToLower(host), nil
 }
 
-func connectProxyHosts(countries []vpnclient.Country) []string {
+func connectProxyHosts(countries []core.Country) []string {
 	candidates := connectProxyCandidates(countries)
 	proxies := make([]string, 0, len(candidates))
 	for _, candidate := range candidates {
@@ -1335,7 +1335,7 @@ func connectProxyHosts(countries []vpnclient.Country) []string {
 	return proxies
 }
 
-func connectProxyCandidates(countries []vpnclient.Country) []proxyCandidate {
+func connectProxyCandidates(countries []core.Country) []proxyCandidate {
 	var proxies []proxyCandidate
 	for _, country := range countries {
 		for _, city := range country.Cities {
@@ -1437,7 +1437,7 @@ func configureAPIProxy(raw string) error {
 		return fmt.Errorf("unsupported proxy scheme %q (supported: http, https, socks5, socks5h)", parsed.Scheme)
 	}
 
-	vpnclient.SetControlPlaneTransport(transport)
+	core.SetControlPlaneTransport(transport)
 	logInfo("control plane API requests routed through proxy=%s scheme=%s", parsed.Host, parsed.Scheme)
 	return nil
 }
@@ -1961,7 +1961,7 @@ func (c *pooledTunnelConn) CloseWrite() error {
 }
 
 type runtimeAuth struct {
-	Token      *vpnclient.TokenResponse
+	Token      *core.TokenResponse
 	ObtainedAt time.Time
 }
 
@@ -2996,7 +2996,7 @@ type proxyControllerConfig struct {
 	ProxyURL   *url.URL
 	Timeout    time.Duration
 	Auth       *runtimeAuth
-	Pass       *vpnclient.ProxyPassInfo
+	Pass       *core.ProxyPassInfo
 	UseH3      bool
 	Sessions   int
 	StatusFile string
@@ -3448,7 +3448,7 @@ func (c *proxyController) renewLocked() error {
 // refreshing the OAuth token and activating the account; when the current
 // account's quota runs out (HTTP 429 or zero remaining) and a session token
 // pool is configured, it activates the next token from the pool.
-func (c *proxyController) acquireUsablePass() (*runtimeAuth, *vpnclient.ProxyPassInfo, error) {
+func (c *proxyController) acquireUsablePass() (*runtimeAuth, *core.ProxyPassInfo, error) {
 	auth, err := c.ensureOAuthToken()
 	if err != nil {
 		return nil, nil, err
@@ -3460,11 +3460,11 @@ func (c *proxyController) acquireUsablePass() (*runtimeAuth, *vpnclient.ProxyPas
 		if fetchErr == nil && !isQuotaExhausted(pass) {
 			return auth, pass, nil
 		}
-		if fetchErr != nil && !errors.Is(fetchErr, vpnclient.ErrQuotaExceeded) && !errors.Is(fetchErr, vpnclient.ErrTokenInvalid) {
+		if fetchErr != nil && !errors.Is(fetchErr, core.ErrQuotaExceeded) && !errors.Is(fetchErr, core.ErrTokenInvalid) {
 			return nil, nil, fetchErr
 		}
 
-		if errors.Is(fetchErr, vpnclient.ErrTokenInvalid) {
+		if errors.Is(fetchErr, core.ErrTokenInvalid) {
 			logInfo("OAuth access was rejected by Guardian during renewal; refreshing token")
 			if refreshed, refreshErr := refreshRuntimeAuth(auth); refreshErr == nil {
 				auth = refreshed
@@ -3476,10 +3476,10 @@ func (c *proxyController) acquireUsablePass() (*runtimeAuth, *vpnclient.ProxyPas
 					return auth, pass, nil
 				}
 			}
-			if errors.Is(fetchErr, vpnclient.ErrTokenInvalid) {
+			if errors.Is(fetchErr, core.ErrTokenInvalid) {
 				logInfo("Guardian account requires activation during proxy pass renewal; activating")
 				ctx, cancel := context.WithTimeout(context.Background(), apiRequestTimeout)
-				_, activateErr := vpnclient.ActivateGuardian(ctx, c.guardian, auth.Token.AccessToken)
+				_, activateErr := core.ActivateGuardian(ctx, c.guardian, auth.Token.AccessToken)
 				cancel()
 				if activateErr != nil {
 					return nil, nil, activateErr
@@ -3499,7 +3499,7 @@ func (c *proxyController) acquireUsablePass() (*runtimeAuth, *vpnclient.ProxyPas
 			}
 			return auth, pass, nil
 		}
-		if errors.Is(fetchErr, vpnclient.ErrTokenInvalid) {
+		if errors.Is(fetchErr, core.ErrTokenInvalid) {
 			logWarn("session token rejected by Guardian; switching to the next token")
 		} else {
 			logWarn("session token quota exhausted; switching to the next token")
@@ -3518,7 +3518,7 @@ func (c *proxyController) nextTokenAuth() (*runtimeAuth, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := vpnclient.SaveTokens(auth.Token); err != nil {
+	if err := core.SaveTokens(auth.Token); err != nil {
 		logWarn("saving tokens failed: %v", err)
 	}
 	c.mu.Lock()
@@ -3530,7 +3530,7 @@ func (c *proxyController) nextTokenAuth() (*runtimeAuth, error) {
 // adoptPass applies pass to the current session: when the session supports
 // in-place token updates the session is retained, otherwise a fresh session
 // pool is built and swapped in while active tunnels drain gracefully.
-func (c *proxyController) adoptPass(pass *vpnclient.ProxyPassInfo) error {
+func (c *proxyController) adoptPass(pass *core.ProxyPassInfo) error {
 	logProxyPassTimeCorrection(pass)
 
 	if err := c.updateCurrentSessionToken(pass.RawToken, pass.ExpiresAt()); err == nil {
