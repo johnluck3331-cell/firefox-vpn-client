@@ -50,17 +50,6 @@ const (
 	defaultExitCheckTimeout       = 10 * time.Second
 	maxExitCheckResponseSize      = 64 * 1024
 	defaultExitCheckURL           = "https://www.cloudflare.com/cdn-cgi/trace"
-
-	// apiRequestTimeout bounds a single control plane API call (FxA,
-	// Guardian, Remote Settings); the shared client adds its own safety
-	// timeout on top, and FxA calls extend it while solving the Fastly
-	// anti-bot challenge.
-	apiRequestTimeout = 15 * time.Second
-
-	// quotaCheckInterval is how often the token pool's remaining monthly
-	// quota is polled so rotation happens as soon as a token is exhausted,
-	// without waiting for the proxy pass itself to expire.
-	quotaCheckInterval = 15 * time.Minute
 )
 
 var (

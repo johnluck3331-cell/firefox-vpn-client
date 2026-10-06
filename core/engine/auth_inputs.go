@@ -12,10 +12,22 @@ import (
 	"golang.org/x/term"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
+
+// apiRequestTimeout bounds a single control plane API call (FxA,
+// Guardian, Remote Settings); the shared client adds its own safety
+// timeout on top, and FxA calls extend it while solving the Fastly
+// anti-bot challenge.
+const apiRequestTimeout = 15 * time.Second
+
+// quotaCheckInterval is how often the token pool's remaining monthly
+// quota is polled so rotation happens as soon as a token is exhausted,
+// without waiting for the proxy pass itself to expire.
+const quotaCheckInterval = 15 * time.Minute
 
 // promptCredentialsStdin reads FxA email/password from the terminal. It is
 // used only by the CLI entry point; GUI/service callers use Login directly.
@@ -40,10 +52,10 @@ func prepareDemoInputs(forceLogin bool, sessionToken string, needServerList bool
 	var tokenSource string
 	var tokenObtainedAt time.Time
 	var tokenPool *sessionTokenPool
-	var err error
 
 	switch {
 	case sessionToken != "" && isExistingFile(sessionToken):
+		var err error
 		tokenPool, err = loadSessionTokenPool(sessionToken)
 		if err != nil {
 			logError("loading session token file failed: %v", err)
@@ -74,6 +86,7 @@ func prepareDemoInputs(forceLogin bool, sessionToken string, needServerList bool
 		tokenSource = "session-token flag"
 		tokenObtainedAt = time.Now()
 	default:
+		var err error
 		token, tokenSource, tokenObtainedAt, err = obtainOAuthTokenInteractive(forceLogin)
 		if err != nil {
 			logError("obtaining OAuth token failed: %v", err)

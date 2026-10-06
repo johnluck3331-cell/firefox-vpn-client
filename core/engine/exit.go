@@ -2,8 +2,8 @@ package engine
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
-	"errors"
 	core "firefox-vpn-client/core"
 	"fmt"
 	"io"

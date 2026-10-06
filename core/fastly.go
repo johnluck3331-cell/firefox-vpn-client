@@ -449,3 +449,10 @@ func baseOrigin(prefixURL string) string {
 	}
 	return prefixURL
 }
+
+// SolveFastlyChallengeForTest exposes the Fastly challenge handshake to
+// end-to-end tests in other packages. It is identical to the internal
+// solveFastlyChallenge used by the FxA login path.
+func SolveFastlyChallengeForTest(ctx context.Context) error {
+	return solveFastlyChallenge(ctx)
+}
