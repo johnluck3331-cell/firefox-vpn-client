@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	vpnclient "firefox-vpn-client"
+	core "firefox-vpn-client/core"
 )
 
 func TestNormalizeProxyURLAddsHTTPS(t *testing.T) {
@@ -40,13 +40,13 @@ func TestObtainOAuthTokenUsesValidCachedAccessToken(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("USERPROFILE", home)
-	want := &vpnclient.TokenResponse{
+	want := &core.TokenResponse{
 		AccessToken:  "cached-access-token",
 		RefreshToken: "refresh-token",
 		ExpiresIn:    3600,
 		Scope:        "profile",
 	}
-	if err := vpnclient.SaveTokens(want); err != nil {
+	if err := core.SaveTokens(want); err != nil {
 		t.Fatalf("SaveTokens returned error: %v", err)
 	}
 
@@ -177,17 +177,17 @@ func TestHandshakeSOCKS5RejectsUnsupportedCommand(t *testing.T) {
 func TestConnectProxyHostsIncludesDefaultConnectServers(t *testing.T) {
 	t.Parallel()
 
-	countries := []vpnclient.Country{
+	countries := []core.Country{
 		{
 			Name: "United States",
 			Code: "US",
-			Cities: []vpnclient.City{
+			Cities: []core.City{
 				{
 					Name: "New York",
 					Code: "nyc",
-					Servers: []vpnclient.Server{
+					Servers: []core.Server{
 						{Hostname: "default.example", Port: 443},
-						{Protocols: []vpnclient.Protocol{{Name: "connect", Host: "proto.example", Port: 8443}}},
+						{Protocols: []core.Protocol{{Name: "connect", Host: "proto.example", Port: 8443}}},
 					},
 				},
 			},
@@ -209,16 +209,16 @@ func TestConnectProxyHostsIncludesDefaultConnectServers(t *testing.T) {
 func TestConnectProxyCandidatesIncludeExitMetadata(t *testing.T) {
 	t.Parallel()
 
-	countries := []vpnclient.Country{
+	countries := []core.Country{
 		{
 			Name: "Germany",
 			Code: "DE",
-			Cities: []vpnclient.City{
+			Cities: []core.City{
 				{
 					Name: "Frankfurt",
 					Code: "fra",
-					Servers: []vpnclient.Server{
-						{Protocols: []vpnclient.Protocol{{Name: "connect", Host: "de.example", Port: 443}}},
+					Servers: []core.Server{
+						{Protocols: []core.Protocol{{Name: "connect", Host: "de.example", Port: 443}}},
 					},
 				},
 			},
@@ -244,15 +244,15 @@ func TestConnectProxyCandidatesIncludeExitMetadata(t *testing.T) {
 func TestResolveProxyMatchesExplicitProxyMetadata(t *testing.T) {
 	t.Parallel()
 
-	countries := []vpnclient.Country{
+	countries := []core.Country{
 		{
 			Name: "Japan",
 			Code: "JP",
-			Cities: []vpnclient.City{
+			Cities: []core.City{
 				{
 					Name: "Tokyo",
 					Code: "tyo",
-					Servers: []vpnclient.Server{
+					Servers: []core.Server{
 						{Hostname: "jp.example", Port: 443},
 					},
 				},
@@ -275,23 +275,23 @@ func TestResolveProxyMatchesExplicitProxyMetadata(t *testing.T) {
 func TestSelectProxyCandidateRequiresExplicitCountry(t *testing.T) {
 	t.Parallel()
 
-	countries := []vpnclient.Country{
+	countries := []core.Country{
 		{
 			Name: "United States",
 			Code: "US",
-			Cities: []vpnclient.City{{
+			Cities: []core.City{{
 				Name:    "United States",
 				Code:    "US",
-				Servers: []vpnclient.Server{{Hostname: "us.example", Port: 443}},
+				Servers: []core.Server{{Hostname: "us.example", Port: 443}},
 			}},
 		},
 		{
 			Name: "France",
 			Code: "FR",
-			Cities: []vpnclient.City{{
+			Cities: []core.City{{
 				Name:    "France",
 				Code:    "LFPB",
-				Servers: []vpnclient.Server{{Hostname: "fr.example", Port: 443}},
+				Servers: []core.Server{{Hostname: "fr.example", Port: 443}},
 			}},
 		},
 	}
@@ -305,14 +305,14 @@ func TestSelectProxyCandidateRequiresExplicitCountry(t *testing.T) {
 func TestSelectProxyCandidateFiltersCountryDeterministically(t *testing.T) {
 	t.Parallel()
 
-	countries := []vpnclient.Country{
+	countries := []core.Country{
 		{
 			Name: "United States",
 			Code: "US",
-			Cities: []vpnclient.City{{
+			Cities: []core.City{{
 				Name: "United States",
 				Code: "US",
-				Servers: []vpnclient.Server{
+				Servers: []core.Server{
 					{Hostname: "us-primary.example", Port: 443},
 					{Hostname: "us-secondary.example", Port: 443},
 				},
@@ -321,10 +321,10 @@ func TestSelectProxyCandidateFiltersCountryDeterministically(t *testing.T) {
 		{
 			Name: "France",
 			Code: "FR",
-			Cities: []vpnclient.City{{
+			Cities: []core.City{{
 				Name:    "France",
 				Code:    "LFPB",
-				Servers: []vpnclient.Server{{Hostname: "fr.example", Port: 443}},
+				Servers: []core.Server{{Hostname: "fr.example", Port: 443}},
 			}},
 		},
 	}
@@ -374,13 +374,13 @@ func TestResolveProxyReplacesSelectionMissingFromFreshServerList(t *testing.T) {
 	if err := saveProxySelection(path, proxyCandidate{Addr: "stale.example:443"}); err != nil {
 		t.Fatalf("saveProxySelection returned error: %v", err)
 	}
-	countries := []vpnclient.Country{{
+	countries := []core.Country{{
 		Name: "Japan",
 		Code: "JP",
-		Cities: []vpnclient.City{{
+		Cities: []core.City{{
 			Name: "Tokyo",
 			Code: "TYO",
-			Servers: []vpnclient.Server{{
+			Servers: []core.Server{{
 				Hostname: "current.example",
 				Port:     443,
 			}},
@@ -410,13 +410,13 @@ func TestResolveProxyReplacesPersistedSelectionForConfiguredCountry(t *testing.T
 	}); err != nil {
 		t.Fatalf("saveProxySelection returned error: %v", err)
 	}
-	countries := []vpnclient.Country{{
+	countries := []core.Country{{
 		Name: "France",
 		Code: "FR",
-		Cities: []vpnclient.City{{
+		Cities: []core.City{{
 			Name:    "France",
 			Code:    "LFPB",
-			Servers: []vpnclient.Server{{Hostname: "fr.example", Port: 443}},
+			Servers: []core.Server{{Hostname: "fr.example", Port: 443}},
 		}},
 	}}
 
@@ -2009,14 +2009,14 @@ func TestIsQuotaExhausted(t *testing.T) {
 
 	cases := []struct {
 		name string
-		pass *vpnclient.ProxyPassInfo
+		pass *core.ProxyPassInfo
 		want bool
 	}{
 		{"nil pass", nil, false},
-		{"no quota headers", &vpnclient.ProxyPassInfo{}, false},
-		{"zero remaining", &vpnclient.ProxyPassInfo{QuotaLeft: "0"}, true},
-		{"quota remaining", &vpnclient.ProxyPassInfo{QuotaLeft: "1073741824"}, false},
-		{"unparsable value", &vpnclient.ProxyPassInfo{QuotaLeft: "n/a"}, false},
+		{"no quota headers", &core.ProxyPassInfo{}, false},
+		{"zero remaining", &core.ProxyPassInfo{QuotaLeft: "0"}, true},
+		{"quota remaining", &core.ProxyPassInfo{QuotaLeft: "1073741824"}, false},
+		{"unparsable value", &core.ProxyPassInfo{QuotaLeft: "n/a"}, false},
 	}
 	for _, tc := range cases {
 		if got := isQuotaExhausted(tc.pass); got != tc.want {

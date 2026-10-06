@@ -1,7 +1,8 @@
-package vpnclient
+package main
 
 import (
 	"context"
+	core "firefox-vpn-client/core"
 	"os"
 	"testing"
 )
@@ -15,13 +16,13 @@ func TestSolveFastlyChallengeE2E(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	if err := solveFastlyChallenge(ctx); err != nil {
+	if err := core.SolveFastlyChallengeForTest(ctx); err != nil {
 		t.Fatalf("solveFastlyChallenge failed: %v", err)
 	}
 
 	// A dummy login must now reach the FxA origin: it should fail with a
 	// proper FxA error (e.g. unknown account), not with HTTP 406.
-	_, err := fxaLogin(ctx, "nonexistent-user-e2e@example.invalid", "dummy-password")
+	_, err := core.FxaLogin(ctx, "nonexistent-user-e2e@example.invalid", "dummy-password")
 	if err == nil {
 		t.Fatal("expected dummy login to fail")
 	}
